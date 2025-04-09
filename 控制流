@@ -1,0 +1,73 @@
+if表达式
+rust中的if的判断条件必须是boolen值
+fn main() {
+    let number = 3;
+    if number != 0 { //如果这里改成 if number{...}则会报错
+        println!("number was something other than zero");
+    }
+}
+和其他语言一样，可以多个条件处理，使用elseif
+也可以将if的判断结果进行赋值
+let cond = false;
+    let number = if cond {5} else {6};
+    println!("the number value is:{}",number);
+
+
+循环重复
+rust有loop，while，for三种循环
+loop关键字告诉 Rust 永远重复执行一个代码块，或者直到你明确告诉它停止。
+比如猜数字的代码：
+    loop{
+        println!("please input a number");
+        let mut input = String::new();
+        io::stdin()
+            .read_line(&mut input)
+            .expect("failed to read line");
+        let input:u8 = input.trim().parse().expect("please type a number");
+
+        match input.cmp(&secret_number){
+            Ordering::Less => println!("too small"),
+            Ordering::Greater => println!("too big"),
+            Ordering::Equal => {
+                println!("you win");
+                break; //明确猜对就停止
+            },
+
+        }
+    }
+
+loop也可以将循环结果赋值给变量
+fn add_count(){
+    let mut count = 0;
+
+    let result = loop{
+        count +=1;
+        if count ==15 {
+            break count*2;
+            //如果count等于15，停止循环，并且对count值乘2
+        }
+    };
+    println!("the result value is:{}",result);
+}
+loop也可以自定义循环名称
+fn add_count(){
+    let mut count = 0;
+
+    'count_up:loop{
+            println!("count value is :{}",count);
+            let mut rec = 10;
+
+            loop{
+                println!("rec value is :{}",rec);
+                
+                if rec == 9 {
+                    break;//break停止的是内循环
+                }
+                if count == 2{
+                    break 'count_up;//指定停止外循环
+                }
+                rec -=1;
+            }
+            count +=1;
+    }
+}
