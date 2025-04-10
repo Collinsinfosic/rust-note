@@ -71,3 +71,60 @@ fn add_count(){
             count +=1;
     }
 }
+while循环和其他语言类似，没有其他特殊功能和写法，如下：
+fn counte_up(){
+    let mut count = 3;
+
+    while count != 0 {
+        println!("the count value is:{}",count);
+        count -=1;
+    }
+    println!("LIFTOFF!!!");
+}
+
+for循环也类似
+使用三种循环实现斐波那契数列
+fn fbnumber(){
+    let mut a =0;
+    let mut b =1;
+    let mut count = 0;
+    let mut vec = Vec::new();
+//使用loop实现斐波那契
+    loop{
+        let mut c = a+b;
+        vec.push(a);
+        vec.push(b);
+        vec.push(c);
+        a =c+b;
+        b=a+c;
+        
+        count +=1;
+        
+        if count == 5{
+            break;
+        }
+
+    }
+    println!("{:?}",vec);
+//使用while实现斐波那契数列
+    for i in (1..5){
+        let mut c = a+b;
+        vec.push(a);
+        vec.push(b);
+        vec.push(c);
+        a=b+c;
+        b=c+a;
+    }
+    println!("{:?}",vec);
+//使用while循环实现斐波那契数列
+    while count <4{
+        let mut c = a+b;
+        vec.push(a);
+        vec.push(b);
+        vec.push(c);
+        a = b+c;
+        b= a+c;
+        count+=1;
+    }
+    println!("{:?}",vec);
+}
