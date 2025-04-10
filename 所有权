@@ -1,0 +1,154 @@
+栈和堆
+
+栈：先进后出，就像一摞盘子，先洗好的在下面，后洗好的在上面，拿盘子会从上向下拿
+添加数据称为入栈，删除数据称为出栈。存储在栈上的所有数据必须具有已知的固定大小。
+编译时大小未知或大小可能会改变的数据必须存储在堆上。
+
+堆：比如去餐厅服务员会问几个人，通过人数给分配一个适当大小的桌子或者包间。
+数据在堆中需要申请一定的空间，然后通过指针来标识这堆数据，想要获取数据时，需要通过指针
+来指向查找。
+
+二者比较下来，推送到栈比在堆上分配更快，因为分配器无需搜索存储新数据的位置；该位置始终位于栈顶。
+相比之下，在堆上分配空间需要更多工作，因为分配器必须首先找到足够大的空间来容纳数据，
+然后执行记录操作以准备下一次分配。
+当你的代码调用一个函数时，传递给函数的值（可能包括指向堆上数据的指针）以及函数的局部变量会被压入栈中。函数执行结束后，这些值会被弹出栈。
+
+跟踪代码的哪些部分使用了堆上的哪些数据，最大限度地减少堆上的重复数据，
+以及清理堆上未使用的数据以避免空间耗尽，这些都是所有权可以解决的问题。
+一旦理解了所有权，你就不需要经常考虑栈和堆了​​。
+但了解所有权的主要目的是管理堆数据，有助于解释它为什么会这样运作。
+
+所有权规则：
+rust中每个值都有一个所有权
+同一时间只有一个所有者
+所有者超出范围，这个值会被删除
+
+变量作用域
+比如：
+{                //作用域从这里开始，没有s所以不生效
+  let s ="hello";//声明S，S开始执行并生效
+}                //作用域结束，S失效
+所以S在有效范围内，是生效的，超出则失效
+
+String类型
+let mut s = String::from("hello");
+String 是 Rust 提供的一个类型，表示一个可变的、动态分配的字符串。
+::from 是 String 类型上的一个静态方法（static method）。它就像是一个“工厂函数”，专门用来从别的东西（这里是 "hello"）创建一个新的 String。
+通俗点说，String::from("hello") 就是在说：“嘿，给我造一个 String 类型的字符串，里面直接装上 "hello" 这个内容！”  
+"hello" 是一个字符串字面量（&str 类型），String::from 会把这个字面量“转化”成一个完整的 String，并且在内存中为它分配空间。
+所以，这行代码的最终效果是：s 是一个可变的 String，里面已经装好了 "hello"。
+
+这两段代码有什么区别？
+fn main() {
+    let mut s = String::from("hello");
+    s.push_str(", word");
+    println!("{}",s);
+
+    let mut z = String::new();
+    z = "hello, word".to_string();
+    println!("{}",z);
+}
+
+使用from相当于分内存的时候就存入hello这个值，买的新本子中就写有hello
+使用new相当于先分一块内存，过段时间再往里面写入值，买的新本子是空的，用的时候再写
+总结
+String::from("hello")：一步到位，直接给你一个装好 "hello" 的字符串。
+String::new(); s = "hello";：先给你个空字符串，但直接赋值会失败，得用额外方法（像 push_str 或 to_string）才能加内容。
+::from 是“从某物创建”的意思，Rust 里很常见，用来把一种类型变成另一种类型。
+
+rust通过作用域来drop
+let s1 = String::from("hello");
+let s2 = s1;
+这段代码，rust会先给s1分配指针，长度，容量，s1赋值给s2的时候，rust会新建
+一个指针指向s1指向的内存空间
+这是一个问题：当s2和s1超出作用域时，它们都会尝试释放同一块内存。
+这被称为双重释放错误
+fn main() {
+    let  s = String::from("hello");
+    let s2 = s;
+    println!("{s},{s2}");
+}
+这段代码在作用域结束时，会释放s和s2，会导致内存双重释放，因此报错
+    Checking ownerships v0.1.0 (/root/pargame/ownerships)
+error[E0382]: borrow of moved value: `s`
+ --> src/main.rs:4:15
+  |
+2 |     let  s = String::from("hello");
+  |          - move occurs because `s` has type `String`, which does not implement the `Copy` trait
+3 |     let s2 = s;
+  |              - value moved here
+4 |     println!("{s},{s2}");
+  |               ^^^ value borrowed here after move
+  |
+  = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider cloning the value if the performance cost is acceptable
+  |
+3 |     let s2 = s.clone();
+  |               ++++++++
+
+For more information about this error, try `rustc --explain E0382`.
+
+rust使用浅拷贝来解决问题，什么时浅拷贝，什么时深拷贝呢？
+浅拷贝：复制一个对象，但只复制它的“表面”数据，比如指针指向的地址，而不复制底层数据本身。结果是新旧对象共享同一块数据内存。
+比喻：你把房子的钥匙复制了一把给朋友，但房子还是同一个。
+
+深拷贝：复制一个对象，连同它指向的所有数据都完整复制一份，新旧对象完全独立。
+比喻：你把整个房子复制了一份，朋友拿到的是全新的房子。
+
+在 Rust 中，当你把一个变量赋值给另一个变量（比如 let s2 = s1;），
+它会把 s1 的“指针、长度、容量”这些信息复制给 s2，但不复制底层数据（堆上的实际内容）
+和浅拷贝不同的是，Rust 不会让 s1 和 s2 同时指向这块数据。赋值后，s1 会“失效”（不能再用），
+这块数据的“所有权”完全转移给了 s2。
+
+深拷贝
+rust中如果要将内存中的数据进行深度拷贝，则需要用到clon函数
+比如这样：
+    let s1 = String::from("hello");
+
+    let s2 = s1.clone();
+    println!("s1={},s2={}",s1,s2);
+
+但是对于整数
+    let x=3;
+    let y=x;
+    println!("{},{}",x,y);
+不适用clone也可以深度拷贝，对于已知的整数，已知的数据长度，rust可以对其进行深度拷贝，
+因此这种情况，深拷贝和浅拷贝没有什么区别。
+
+
+copy trait
+是rust的特质，通过注解的方式告诉编译器，这个值可以直接进行复制，而不是浅拷贝中移动所有权。
+通俗点讲：Copy 是一个“允许随便抄作业”的标签。打了这个标签的东西，Rust 就不会把“作业本”拿走，而是直接给你复印一份，原来的还能用。
+实现 Copy 的类型，通常是：
+基本类型：i32、f64、bool 等简单类型。
+固定大小、不含堆数据的结构体或枚举（需要手动实现）。
+但是 Copy 和 Drop 是互斥的：一个类型不能同时有“随便复制”和“需要特殊清理”的行为。
+如果允许复制 String，两个变量指向同一块内存，Drop 会释放两次，崩溃！
+
+总结
+copy可以理解成简单类型的深度拷贝，clone是复杂类型的深度拷贝。
+比如这段代码
+fn main() {
+    let s = String::from("hello");
+    // 初始状态下，S指向hello，takes调用后
+    // 相当于进行移动所有权，takes的参数some_string指向hello
+    // s 不能再用（Rust 编译器禁止访问）
+    takes_own(s);
+    // 初始状态下，X指向5，调用make后，
+    // 会在堆中复制一份内存数据，由make的参数some_string指向
+    let x = 5;
+    make_copy(x);
+    // 超出作用域会，均被drop
+}
+
+fn takes_own(some_string:String){
+    println!("{some_string}");
+}
+fn make_copy(some_string:i32){
+    println!("{some_string}");
+}
+
+
+返回值和范围
+
+
