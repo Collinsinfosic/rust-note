@@ -23,6 +23,7 @@ rust中每个值都有一个所有权
 同一时间只有一个所有者
 所有者超出范围，这个值会被删除
 
+
 变量作用域
 比如：
 {                //作用域从这里开始，没有s所以不生效
@@ -150,5 +151,170 @@ fn make_copy(some_string:i32){
 
 
 返回值和范围
+返回值也可以转移所有权
+fn main(){
+    // 2. 主函数调用后，s1指向hello
+    let s1= gives_own();
+    // a. 初始状态s2指向yours
+    let s2 = String::from("yours");
+    // b.调用take后，将s2作为参数传入
+    // d.take执行完后，s3指向take返回yours
+    let s3 = take_add_back(s2);
+    println!("{},{}",s1,s3);
+    // 初始状态s指向somestring
+    let s = String::from("somestring");
+    // 调用calu函数，将s作为参数传入
+    // 返回的结果，按照返回顺序，b指向somestring，len指向返回长度
+    let (b,len) = calu(s);
+    println!("the length of {b} is {len}");
+
+}
+
+fn gives_own()->String{
+    // 1. 初始状态是somestr指向hello
+    let somestr = String::from("hello");
+    somestr
+//在 gives_own 里，somestr 没超出作用域就被返回，所以这里不释放。内存的释放责任转移给了 s1。
+
+
+}
+
+fn take_add_back(a_string:String)->String{
+    // c.take中的参a_string指向yours
+    a_string
+}
+
+fn calu(a:String)->(String, usize){
+    // 传入somestring，此时a指向somestring
+    // 并使用len函数计算字符串长度，长度返回值由length指向
+    // 并将字符串和长度返回
+    let length = a.len();
+    (a,length)
+    // 返回内容除了数值，也可以返回元组
+}
+
+
+参考和借用
+上面的拷贝，移动所有权和复制堆数据
+但是对于calu方法，我们想要使用原先的S，而不是通过移动所有权指来指去
+所以可以使用借用的方式
+借用仅限于看，不能修改内存中的值
+fn main(){
+    let s = String::from("somestring");
+    // s指向somestring，将s的内存地址传入calu
+    let len = calu(&s);
+    // len指向somestring的长度
+    println!("the length of {s} is {len}");
+
+}
+
+// a参数接收到的是内存地址所以：pre:a -> pre:s -> value:somestring
+fn calu(a:&String)->usize{
+    a.len()
+    // 返回somestring的长度
+}
+
+可变引用
+变量引用可以被多次引用，可变引用只能被引用一次，否则会报错
+fn main(){
+    let s = String::from("somestring");
+    // s指向somestring，将s的内存地址传入calu
+    let z = &s;
+    let a = &s;
+    println!("{},{}",z,a);
+    let mut s1 = String:from("new somestr");
+    let z1 = &mut s1;
+    let a1 = &mut s1;
+    println!("{},{}",z1,a1);
+}
+error[E0499]: cannot borrow `s1` as mutable more than once at a time
+  --> src/main.rs:9:14
+   |
+8  |     let z1 = &mut s1;
+   |              ------- first mutable borrow occurs here
+9  |     let a1 = &mut s1;
+   |              ^^^^^^^ second mutable borrow occurs here
+10 |     println!("{},{}",z1,a1);
+   |                      -- first borrow later used here
+
+For more information about this error, try `rustc --explain E0499`.
+禁止多个可变引用同时指向同一数据的限制允许修改，但修改方式非常受控
+Rust 可以在编译时防止数据竞争。数据竞争类似于竞争条件，当以下三种行为发生时就会发生：
+1. 两个或多个指针同时访问相同的数据。
+2. 至少有一个指针正用于写入数据。
+3. 没有使用任何机制来同步数据访问。
+
+通俗来说就是：
+要么有一个可变借用（&mut），独占访问权。
+要么有任意多个只读借用（&），但不能同时有可变借用。
+不能“读着的时候还改”，否则可能读到一半改了，数据就不一致了。
+
+Rust 的借用规则是为了保证内存安全：
+只读借用（&）：允许多人看，但不能改，数据一致。
+可变借用（&mut）：只能一个人改，改的时候别人不能看，避免冲突。
+如果允许同时有只读和可变借用，可能发生：
+你读到一半，别人改了，读到的值不靠谱。或者改的时候被读，改得乱七八糟。
+
+
+悬垂指针
+悬垂指针是内存中的数据已经被释放，但是指向内存的指针还保留
+rust编译器会提前检查出并停止继续编译
+比如如下代码
+fn main(){
+    let re = dangle();
+    println!("{}",re);
+}
+
+fn dangle()->&String{
+    let s = Strnig::from("hello");
+    &s
+}
+dangle中有一个hello，并且由s指向，随后dangle返回了s的地址，作用域结束后，
+s的内存被释放，主函数中，re调用了dangle，指向了&s的指针，再去找&s的值，发现不见了
+这种叫悬垂指针。
+通俗说：
+1. s 是啥？
+let s = String::from("hello");：
+s 是一个装着 "hello" 的箱子，这个箱子是函数 dangle 自己造的。
+箱子里的 "hello" 存在电脑内存里（比如一个叫“堆”的地方），s 是箱子的“老板”，管着它。
+
+2. &s 是啥？
+&s 是一个“地址标签”，告诉别人箱子在哪。
+它不是箱子本身，只是指着箱子说：“嘿，东西在那儿！”
+
+3. 函数结束了咋办？
+在 Rust 里，每个东西都有自己的“地盘”（作用域）。
+s 的地盘是函数 dangle 里面，从 { 到 }。
+函数一结束（到 }），s 就没地盘了，Rust 会把箱子（s）扔掉，把内存清理干净。这叫“释放”。
+
+4. 那 &s 呢？
+你返回了 &s，想让这个地址标签活到外面去。
+但问题来了：地址标签指的箱子（s）已经被扔了！
+外面的人拿到这个标签一看，地址是空的，啥也找不到。这就是“悬垂指针”，很危险。
+
+Rust 的规矩：谁造的箱子（s），谁负责扔。s 是 dangle 造的，函数结束就得扔。
+地址没用：你返回 &s（地址），但这只是个“指路牌”，它不负责留着箱子。箱子的老板（s）走了，箱子就没了。
+安全第一：Rust 不想让你拿着没用的地址到处跑，可能撞到别人家（访问非法内存），所以直接拦住你。
+
+fn main(){
+    let s1 = String::from("hello");
+    let re = dangle(s1);
+    println!("{}",re);
+}
+
+// fn dangle()->&String{
+//     let s = Strnig::from("hello");
+//     &s
+// }
+fn dangle()->String{
+    let s = Strnig::from("hello");
+    s //箱子搬出去
+}
+
+fn dangle(s: &String) -> &String {
+    s // 返回借来的地址
+}
+
+
 
 
