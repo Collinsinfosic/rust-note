@@ -46,4 +46,207 @@ age 抽屉，装着 10。
 
 所以简单的结构（u8,i32等）都会直接在栈上生成，只有复杂的结构会在堆中分配空间给其使用
 
+----------------------------------------------------------------------------------------------------------------------------------------------------------
+struct People{
+    active:bool,
+    username:str,
+    email:str,
+    age:u32,
+}
+fn main(){
+    let p1 = People{
+        active:true,
+        username:"collins",
+        email:"example@gmail.com",
+        age:8,
+    };
+}
+这段代码为什么会报错，原因在与，str是一个不正常的类型，一个不知道大小的蛋糕。
+在 Rust 里，str（不带 &）是一个“字符串切片”的原始类型，但它几乎从不用在结构体里。因为 str 的大小在编译时不确定（可以是任意长度的字符串），Rust 不知道怎么给它分配内存。
+打个比方，str 就像一块没切好的大蛋糕，Rust 不知道你要多大一块，所以没法直接放进 People 这个“盘子”里。
+你在 main 里写的 "collins" 和 "example@gmail.com" 是字符串字面量，它们的类型是 &str，不是 str。
+字符串字面量：类似&str
+为啥是 &str？
+字符串字面量是程序运行时存在内存里的固定文本（通常存在程序的“只读”部分）。
+&str 是一个“借用”的类型，包含两部分：一个指向这串文本的指针 + 这串文本的长度。
+比如 "collins" 是个 &str，Rust 知道它指向内存里存的 c-o-l-l-i-n-s 这 7 个字母，还知道长度是 7。
+为啥是&
+& 表示“借用”，意思是你没把这串文本拿回家（拥有），只是指着它说“我要用”。
+字符串字面量天生是“静态的”（整个程序运行期间都活着），所以它们的 &str 类型有个特殊标签叫 'static，意思是“永远有效”。
 
+如果改成char，并且只向结构体的username和email只存放一个4字节的字符，rust不会报错
+因为简单省心：char 是固定大小（4 字节），自己管自己，不用操心生命周期或内存。
+但有局限：这只能存一个字符，比如 'c'，没法存 "collins" 这样的完整用户名。
+
+如果代码变成这样：
+struct People<'a>{
+    active:bool,
+    username:&'a str,
+    email:String,
+    age:u32,
+}
+// username: &'a str 是“借用”的，指向现成的字符串。
+// email: String 是“拥有”的，自己管着一块内存。
+// username 不存 "collins" 本身，只是个便签（栈上，16 字节），写着：“去静态区找，地址是 XXX，长度是 7。”
+// 这便签指向静态区的 "collins"，程序运行期间那块内存一直稳稳当当，结束后static area内容被释放。
+fn main(){
+    let p1 = People{
+        active:true,
+        username:"collins",
+        email:String::from("example@gmail.com"),
+        age:8,
+    };
+}
+
+使用：
+以前的写法可能会单独创建一个方法，然后使用长宽单独穿参的方法，但是这里可以使用直接传递结构体，使用元组的写法完成
+fn area(dimensions:(u32,u32))->u32{
+    dimensions.0*dimensions.1
+// 这里0，1是dimension的第一个，第二个元素，两个元素均为u32类型
+}
+fn main(){
+    let rect = (10,5);
+    println!("{}",area(rect));
+}
+
+关于生命周期：
+struct Rectangle<'Life>{
+    width:u32,
+    height:u32,
+    name:&'Life str,
+}
+// rust通过'a判断是生命周期
+// 语法约定：在 Rust 中，单引号开头的小写标识符（比如 'a、'b）是专门用来表示生命周期的。这是语言的固定语法，编译器看到 'a 就知道你指的是生命周期，而不是别的（比如变量名或类型）。
+// 命名约定：虽然你可以随便命名生命周期（比如 'Life），但 Rust 社区通常用短名字（像 'a、'b）因为它们简洁，容易阅读。长的名字（像 'Life）在复杂代码中可能更具描述性，但简单场景下显得有点多余。
+// 合法性：生命周期名字必须以单引号开头（'），后面跟合法的 Rust 标识符（字母开头，不能是关键字）。比如 '123（以数字开头）或 'struct（关键字）是不合法的
+
+
+fn area<'Life>(rectangle:&'Life Rectangle<'Life>)->(u32,u32,&'Life str){
+    (rectangle.width, rectangle.height,rectangle.name)
+}
+
+fn main(){
+    let ceral = Rectangle{
+        width:10,
+        height:15,
+        name:"simple",
+    };
+    println!("{:?}",area(&ceral));
+}
+
+------------------------------------------------------------------------------------------------------------------------------------------------------
+#[derive(Debug)]
+// #[derive(Debug)] 就像是给 Rectangle 贴了个标签，告诉 Rust：“帮我生成一段代码，让我能用一种可读的方式打印这个结构体的内容！”
+// 具体来说，它会让 Rectangle 实现 Debug 这个特性（trait），这样你就可以用 println!("{:?}", ceral) 或 println!("{:#?}", ceral) 来打印它的内容。
+
+
+struct Rectangle<'a>{
+    width:u32,
+    height:u32,
+    name:&'a str,
+}
+fn area<'a>(rectangle:&'a Rectangle<'a>)->(u32,u32,&'a str){
+    (rectangle.width, rectangle.height,rectangle.name)
+}
+
+fn main(){
+    let ceral = Rectangle{
+        width:10,
+        height:15,
+        name:"simple",
+    };
+    println!("{:#?}",area(&ceral));
+    // {:#?}：让 println! 以美化格式（多行、缩进）打印 area(&ceral) 返回的元组 (10, 15, "simple")，看起来更清晰。比如：
+    // (
+    //     10,
+    //     15,
+    //     "simple",
+    // )
+
+
+}
+
+------------------------------------------------------------------------------------------------------------------------------------------------------
+
+#[derive(Debug)]
+
+struct Rectangle<'a>{
+    width:u32,
+    height:u32,
+    name:&'a str,
+}
+// 结构体声明了生命周期，作为结构体的实现，同样也要声明生命周期
+// 实现中生命周期后，对应的printname就不用声明生命周期了
+
+impl<'a> Rectangle<'a> {
+    // &self 是方法的参数，表示“借用调用这个方法的 Rectangle 实例”。
+    fn area(&self)->u32{
+        self.width *self.height
+    }
+// 为什么rect是width的所有者，还需要用&self来接用
+// rust的机制是作用域结束后内存会被释放，所以如果传入rect，在area结束后，rect会
+// 被释放掉，printname就无法再使用rect，所以即使是所有者，在这里也需要借用，这样printname才能继续使用rect中的值
+    fn printname(&self)->&'a str{
+        self.name
+    }
+    // 长宽的计算，名称的打印在栈中就可以完成
+}
+
+fn main(){
+    let rect = Rectangle{
+        width:3,
+        height:5,
+        name:"ceral",
+    };
+
+    println!(
+        "The area of the rectangle is {} square pixels.",rect.area());
+    println!("the area of name is : {}",rect.printname());
+}
+------------------------------------------------------------------------------------------------------------------------------------------------------
+hold中除了传入所有者，也可以传入同结构体的其他变量
+
+#[derive(Debug)]
+
+struct Rectangle{
+    width:u32,
+    height:u32,
+}
+
+impl Rectangle{
+    fn area(&self)->u32{
+        &self.height * &self.width
+    }
+    fn can_hold(&self,other:&Rectangle)->bool{
+            self.height >other.height && self.width > other.width
+    }
+}
+
+//这里的Self取决于当前impl属于哪个struct，如果是qqqq，这里的Self就是qqqq，main中rect4的对象类型也是qqqq
+impl Rectangle {
+    fn square(size: u32) -> Self {
+        Self {
+            width: size,
+            height: size,
+        }
+    }
+}
+
+fn main(){
+    let rect1 = Rectangle {
+        width: 30,
+        height: 50,
+    };
+    let rect2 = Rectangle {
+        width: 10,
+        height: 40,
+    };
+    let rect3 = Rectangle {
+        width: 60,
+        height: 45,
+    };
+    println!("Can rect1 hold rect2? {}", rect1.can_hold(&rect2));
+    println!("Can rect1 hold rect3? {}", rect1.can_hold(&rect3));
+    let rect4 = Rectangle::square(4);
+    println!("{}", rect4.area());
+}
