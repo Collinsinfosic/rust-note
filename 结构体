@@ -1,0 +1,49 @@
+结构体
+通过strust来声明，结构体本身是不占用内存空间的，更像是一个规则，比如：
+struct User{
+    name:String,
+    email:String,
+    age :u8,
+}
+// 结构体只是规则，并不占用内存空间
+
+fn main(){
+    let mut user1 = User{
+        name:String::from("zhangsan"),
+        email:String::from("grantcollinsinfosec@gmail.com"),
+        age: 10,
+    };
+    user1.email = String::from("example@gmail.com");
+
+}
+分配 user1 的房间：
+在内存的“栈”（stack，一个整齐的区域，像是放便签的地方）上，房东给 user1 贴了个标签，里面记录了 name、email 和 age 的“地址”。
+这个标签就像一个文件夹，里面有三张纸条，分别指向 name、email 和 age 的实际内容。
+
+处理 name: String::from("zhangsan")：
+String 是一个特殊的盒子，它有两个部分：
+一张小纸条（存在栈上），记录了文字的地址、长度和容量。
+文字本身（"zhangsan"）存在内存的“堆”（heap，一个大仓库，专门存大东西）里。
+房东在堆上找了个空位，存下 "zhangsan"，然后在 user1 的 name 纸条上指向这个堆地址。
+
+处理 email: String::from("grantcollinsinfosec@gmail.com")：
+跟 name 一样，房东在堆上存下 "grantcollinsinfosec@gmail.com"，然后在 user1 的 email 纸条上记录堆地址。
+
+处理 age: 10：
+age 是个小数字（i8），不需要堆，直接在 user1 的文件夹里（栈上）写下 10。
+
+总结：user1 是个文件夹（栈上），里面有：
+name 纸条，指向堆上的 "zhangsan"。
+email 纸条，指向堆上的 "grantcollinsinfosec@gmail.com"。
+age 抽屉，装着 10。
+
+如果修改enmail，name等值时，rust需要先在堆中分配一块新的内存空间，将栈中的地址重新
+指向新分配的堆，再将原先旧的堆清除。
+
+不可变问题：如果没加 mut，房东会说：“你没权限改 user1 的东西！”（这就是为什么不加mut会报错。）
+清理内存：当 main 结束，user1 不用了，房东会把栈上的文件夹和堆上的文字（zhangsan 和 example@gmail.com）都清理干净，不会留下垃圾。
+不让浪费：当你把 email 从旧邮箱换到新邮箱，旧邮箱的房间马上被回收，不会占着地方。
+
+所以简单的结构（u8,i32等）都会直接在栈上生成，只有复杂的结构会在堆中分配空间给其使用
+
+
