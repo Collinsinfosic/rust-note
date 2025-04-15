@@ -30,6 +30,13 @@ fn main(){
     println!("{:?}",loopback);
 
 }
+
+上面代码在内存中分配如下：
+在static area中将main函数中home等值存入（存入static是因为有生命周期），Ipv4addr使用借用的方式，
+在stack中存入home和127.0.0.1的地址，Address的V4在stack中指向Ipv4addr,loopback和::1因为在Ipv6addr
+中存放方式是String，所以从static中复制一份在堆hoop中（包含::1等值），并且static中的::1
+不会被释放，栈中的Ipv6addr指向堆中的地址，最后Address的V6指向栈中的Ipv6addr，具体图如下：
+
 【储藏室（静态存储区）】（程序启动就放好，永不释放）
 +-----------------------------------+
 | "home"        | h | o | m | e |   |  <- 地址 1000，长度 4
