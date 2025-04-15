@@ -96,6 +96,28 @@ fn main(){
 | [填充: 7 字节]                 |
 +-----------------------------------+
 
+Option
+// Option枚举，T标识任意类型
+// 枚举中有两个变体，为固定格式，可能为空None
+// 也可能为装值的盒子Some(T)
+enum Option<T> {
+    None,
+    Some(T),
+}
+fn main(){
+    let x:i8 =5;
+    // x只是一个普通的i8数字，可以直接拿来用
+    let y:Option<i8> = Some(5);
+    // y是一个礼盒，类型是i8,但是里面可能为空，也可能装的是5
+    let sum = match y {
+        Some(value)   => x+y,
+        None => x,     
+    };
+    // 所以sum在相加时需要做两种情况讨论，可能是None+x，可能是Some(5)+x
+    // 所以需要将礼盒打开再使用
+println!("{}",sum)
+
+}
 
 
 
